@@ -45,6 +45,8 @@ const (
 	DefaultRetryInterval     = time.Minute
 	DefaultHealthHookTimeout = time.Minute
 	FinalizerName            = "node-disruption-controller/terminate-propagation"
+	TORReasonLabel           = "app.kubernetes.io/disruption-reason"
+	TORMaintenanceReason     = "tor-maintenance"
 )
 
 type NodeDisruptionReconcilerConfig struct {
@@ -273,6 +275,11 @@ func (ndr *SingleNodeDisruptionReconciler) getRetryDate() metav1.Time {
 }
 
 func (ndr *SingleNodeDisruptionReconciler) getDoNotGrantBeforeDate() metav1.Time {
+	// TODO: Temporary workaround until the producer sets doNotGrantBefore explicitly for TOR maintenance disruptions.
+	if ndr.NodeDisruption.Labels[TORReasonLabel] == TORMaintenanceReason && !ndr.NodeDisruption.Spec.Retry.Deadline.IsZero() {
+		return metav1.NewTime(ndr.NodeDisruption.Spec.Retry.Deadline.Add(-time.Hour))
+	}
+
 	return ndr.NodeDisruption.Spec.DoNotGrantBefore
 }
 
